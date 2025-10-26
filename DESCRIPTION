@@ -1,0 +1,31 @@
+Package: ev-charging-analysis
+Type: project
+Title: EV Charging Patterns – Business Analytics
+Version: 0.1.0
+Authors@R: person(given = "Ioannis", role = c("aut", "cre"))
+Description: Reproducible analysis of EV charging patterns with EDA and modeling.
+License: MIT
+Encoding: UTF-8
+Depends: R (>= 4.1)
+Imports:
+    lubridate,
+    ggplot2,
+    gridExtra,
+    moments,
+    corrplot,
+    caret,
+    glmnet,
+    randomForest,
+    xgboost,
+    keras,
+    car,
+    dplyr,
+    tibble,
+    purrr,
+    here,
+    patchwork,
+    viridis,
+    rmarkdown
+LazyData: true
+
+

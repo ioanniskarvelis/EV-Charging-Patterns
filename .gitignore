@@ -1,0 +1,19 @@
+# R-related
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+.Rapp.history
+*.Rproj
+
+# OS / editor
+.DS_Store
+Thumbs.db
+~$*
+
+# Misc
+.env
+.vscode/
+.idea/
+
+

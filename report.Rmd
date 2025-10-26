@@ -1,0 +1,136 @@
+---
+title: "EV Charging Patterns – Analysis"
+output:
+  html_document:
+    df_print: paged
+    toc: true
+    toc_float: true
+    number_sections: false
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+fig_dir <- "figures"
+if (!dir.exists(fig_dir)) dir.create(fig_dir, recursive = TRUE)
+```
+
+## Overview
+
+This report summarizes exploratory data analysis and modeling for EV charging behavior.
+
+## Packages
+
+```{r}
+required <- c("lubridate", "ggplot2", "gridExtra", "moments", "corrplot",
+              "caret", "glmnet", "randomForest", "xgboost", "keras", "car",
+              "dplyr", "tibble", "purrr", "here", "patchwork", "viridis")
+for (p in required) if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
+invisible(lapply(required, library, character.only = TRUE))
+```
+
+## Data Loading
+
+```{r}
+csv_path <- if (requireNamespace("here", quietly = TRUE)) here::here("ev_charging_patterns.csv") else "ev_charging_patterns.csv"
+data <- read.csv(csv_path)
+str(data)
+```
+
+## Preprocessing
+
+```{r}
+data$Charging.Start.Time <- lubridate::ymd_hms(data$Charging.Start.Time)
+
+get_time_of_day <- function(hour) {
+  if (hour >= 5 & hour < 12) {
+    return('Morning')
+  } else if (hour >= 12 & hour < 17) {
+    return('Afternoon')
+  } else if (hour >= 17 & hour < 21) {
+    return('Evening')
+  } else {
+    return('Night')
+  }
+}
+
+data$CorrectedTimeOfDay <- sapply(lubridate::hour(data$Charging.Start.Time), get_time_of_day)
+
+df_analysis <- data.frame(
+  Energy.Consumed.kWh              = data$Energy.Consumed..kWh.,
+  Battery.Capacity.kWh             = data$Battery.Capacity..kWh.,
+  Charging.Rate.kW                 = data$Charging.Rate..kW.,
+  Charging.Cost.USD                = data$Charging.Cost..USD.,
+  CorrectedTimeOfDay               = data$CorrectedTimeOfDay,
+  Day.of.Week                      = data$Day.of.Week,
+  State.of.Charge.Start            = data$State.of.Charge..Start...,
+  Distance.Since.Last.Charge.km    = data$Distance.Driven..since.last.charge...km.,
+  Temperature.C                    = data$Temperature...C.,
+  Vehicle.Age.years                = data$Vehicle.Age..years.,
+  Charger.Type                     = data$Charger.Type,
+  User.Type                        = data$User.Type
+)
+
+names(df_analysis)[1] <- "energy_kwh"
+df_analysis <- subset(df_analysis,
+  energy_kwh <= Battery.Capacity.kWh &
+  State.of.Charge.Start <= 100
+)
+df_analysis <- na.omit(df_analysis)
+```
+
+## Exploratory Plots
+
+```{r}
+library(ggplot2)
+p1 <- ggplot(df_analysis, aes(x=energy_kwh)) + geom_histogram(bins=30, fill="steelblue", alpha=0.7)
+p2 <- ggplot(df_analysis, aes(x=User.Type, y=energy_kwh, fill=User.Type)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, hjust=1))
+p3 <- ggplot(df_analysis, aes(x=CorrectedTimeOfDay, y=energy_kwh, fill=CorrectedTimeOfDay)) + geom_boxplot()
+p4 <- ggplot(df_analysis, aes(x=Day.of.Week, y=energy_kwh, fill=Day.of.Week)) + geom_boxplot() + theme(axis.text.x = element_text(angle=45, hjust=1))
+gridExtra::grid.arrange(p1, p2, p3, p4, ncol=2)
+ggsave(file.path(fig_dir, "boxplots.png"), width = 10, height = 7)
+```
+
+## Correlations
+
+```{r}
+numeric_vars <- df_analysis[, sapply(df_analysis, is.numeric)]
+cor_matrix <- cor(numeric_vars, use="complete.obs")
+corrplot::corrplot(cor_matrix, method="circle", type="upper", tl.col="black", tl.srt=45, addCoef.col="black", number.cex=0.7)
+ggsave(file.path(fig_dir, "corrplot.png"), width = 8, height = 6)
+```
+
+## Modeling Snapshot
+
+```{r}
+set.seed(123)
+create_data_splits <- function(data, target_var = "energy_kwh") {
+  n <- nrow(data)
+  train_size <- round(n * 0.7)
+  val_size <- round(n * 0.1)
+  test1_size <- round(n * 0.1)
+  idx <- sample(1:n, n)
+  tr <- idx[1:train_size]
+  va <- idx[(train_size+1):(train_size+val_size)]
+  te <- idx[(train_size+val_size+1):(train_size+val_size+test1_size)]
+  list(
+    X_train = data[tr, !names(data) %in% target_var],
+    y_train = data[tr, target_var][[1]],
+    X_val   = data[va, !names(data) %in% target_var],
+    y_val   = data[va, target_var][[1]],
+    X_test1 = data[te, !names(data) %in% target_var],
+    y_test1 = data[te, target_var][[1]]
+  )
+}
+
+spl <- create_data_splits(df_analysis)
+lm_mod <- lm(spl$y_train ~ ., data = cbind(spl$X_train, y = spl$y_train))
+pred <- predict(lm_mod, newdata = spl$X_test1)
+rmse <- sqrt(mean((pred - spl$y_test1)^2))
+rmse
+```
+
+## Outputs
+
+Figures are saved under `figures/`.
+
+
