@@ -1,4 +1,8 @@
 ## EV Charging Patterns – Business Analytics Project
+[![Made with R](https://img.shields.io/badge/Made%20with-R-276DC3?logo=r&logoColor=white)](#)
+[![R >= 4.1](https://img.shields.io/badge/R-%E2%89%A5%204.1-276DC3)](#)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/OWNER/REPO/pulls)
 
 This repository contains an R-based analysis of EV charging behavior, exploring descriptive statistics, visualization, and predictive modeling (Linear/Lasso Regression, Random Forest, XGBoost) on `ev_charging_patterns.csv`.
 
